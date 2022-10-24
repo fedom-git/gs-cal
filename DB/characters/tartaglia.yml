@@ -1,8 +1,10 @@
 base:
+  name: "tartaglia"
   a: 301
   h: 13103
   d: 815
   cr: 5
   cd: 50
+  eType: "hydro"
   hydro: 28.8
 

@@ -1,0 +1,12 @@
+panel:
+  name: "Rust"
+  a: 510
+giveBuffs:
+  panel:
+    - type: "ar"
+      v: 41.3
+  damageAugment:
+    - type: "normalAttack"
+      v: 80
+
+

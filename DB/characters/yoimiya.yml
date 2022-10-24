@@ -1,0 +1,21 @@
+panel:
+  name: "yoimiya"
+  a: 323
+  h: 10164
+  d: 615
+  cr: 24.2
+  cd: 50
+  eType: "pyro"
+
+skills:
+  a:
+    damageSrc: "a"
+    rate: [63.6, 63.6, 122, 158.6, 82.8, 82.8, 188.9]
+    #reaction: [1, 0, 0, 1, 0, 0, 1]
+    reaction: [63.6, 158.6, 188,9]
+    reactionType: "vaporize"
+  e:
+    dType: "e"
+    rate: [161.7]
+  q:
+    dType: "q"
