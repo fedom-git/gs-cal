@@ -12,13 +12,11 @@ type Character struct {
 	Teammates     []string          `yaml:"teammates"`
 	GiveBuffs     map[string][]Buff `yaml:"giveBuffs"`
 	RecievedBuffs map[string][]Buff `yaml:"takeBuffs"`
-
 	//set after calc
-
-	Final      map[string]float64
-	Augment    map[string]float64 `yaml:"augment"`
-	Resistance map[string]float64 `yaml:"resistance"`
-	Defence    map[string]float64 `yaml:"defence"`
+	Final        map[string]float64
+	Augment      map[string]float64 `yaml:"augment"`
+	DeResistance map[string]float64 `yaml:"deResistance"`
+	Defence      map[string]float64 `yaml:"defence"`
 }
 
 const (
@@ -37,8 +35,6 @@ const (
 	ChargedAttack = 1 << 12
 	E             = 1 << 13
 	Q             = 1 << 14
-
-	UpheavalBaseDamage = 723.0
 )
 
 var (
@@ -49,7 +45,7 @@ var (
 		"anemo":         Anemo,
 		"electro":       Electro,
 		"dendro":        Dendro,
-		"Cryo":          Cryo,
+		"cryo":          Cryo,
 		"geo":           Geo,
 		"allo":          Allo,
 		"amplification": Amplification,
@@ -58,14 +54,6 @@ var (
 		"chargedAttack": ChargedAttack,
 		"e":             E,
 		"q":             Q,
-	}
-
-	UpheavalDamageMap = map[string]float64{
-		"superConduction": UpheavalBaseDamage * 1,
-		"diffusion":       UpheavalBaseDamage * 1.2,
-		"electricShock":   UpheavalBaseDamage * 2.4,
-		"iceBreak":        UpheavalBaseDamage * 3,
-		"overload":        UpheavalBaseDamage * 4,
 	}
 )
 
@@ -81,7 +69,7 @@ type Skill struct {
 	ReactionFator    map[string]float64
 	//ReactionType    string  `yaml:"reactionType"`
 	//ReactionFactor  float64 `yaml:"reactionFactor"` //1.5 or 2.0
-	//ReactionCount   float64 `yaml:"reactionCount"`
+	UpheavalCount map[string]float64 `yaml:"upheavalCount"`
 }
 
 func (c *Character) postMarshal() {
@@ -108,6 +96,14 @@ func ParseCharacter(path string) *Character {
 func (c *Character) RecieveBuffs(buffMap *BuffMap) {
 	for k, vec := range *buffMap {
 		c.RecievedBuffs[k] = append(c.RecievedBuffs[k], vec...)
+	}
+}
+
+func (c *Character) MergeDeResistance() {
+	for bVec, ok := c.RecievedBuffs["deResistance"]; ok; {
+		for _, b := range bVec {
+			c.DeResistance[b.Type] += b.V
+		}
 	}
 }
 
@@ -160,13 +156,27 @@ func (c *Character) CalcSkill(skillType string) *map[string]float64 {
 	}
 	czone := 1 + c.Final["cr"]*c.Final["cd"]/10000
 	rzone := skill.RawRateSum
+	emAmp := AmplificationFactor(c.Final["em"])
+	emUph := UpheavalFactor(c.Final["em"])
 	for k, v := range skill.AmplificationSum {
-		rzone += v * BaseReactionFactor(k, skill.ElementType) * skill.ReactionFator[k]
+		rzone += v * BaseReactionFactor(k, skill.ElementType) * (skill.ReactionFator[k] + emAmp) * ResFactor(10, c.DeResistance[skill.ElementType])
 	}
-	azone := c.Final["a"] * rzone * czone
-
-	resMap["a"] = azone
+	dzone := c.Final["a"] * rzone * czone
+	// upheavals don't take crcd
+	for k, v := range skill.UpheavalCount {
+		dzone += v * UpheavalBaseDamage * UpheavalFactorMap[k] * (skill.ReactionFator[k] + emUph) * ResFactor(10, c.DeResistance[GetUpheavalElementType(&k)])
+	}
+	resMap[skillType] = dzone
 	return &resMap
+}
+
+func ResFactor(er float64, dr float64) float64 {
+	fr := er - dr
+	if fr < 0 {
+		return 1 - fr/2/100
+	} else {
+		return 1 - fr/100
+	}
 }
 
 func AmplificationFactor(em float64) float64 {
